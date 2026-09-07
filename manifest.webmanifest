@@ -1,0 +1,12 @@
+{
+  "name": "Hana Trasy",
+  "short_name": "Hana Trasy",
+  "description": "Týdenní plánování tras domácích návštěv",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#111827",
+  "lang": "cs",
+  "orientation": "portrait"
+}

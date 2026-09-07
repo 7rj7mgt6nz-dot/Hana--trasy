@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Hana Trasy">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Hana Trasy</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#f4f6f9;color:#17202a
+}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f9}
+header{
+  position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e5e7eb;
+  padding:18px 16px 12px
+}
+h1{margin:0;font-size:27px}
+.sub{color:#667085;margin-top:4px;font-size:14px}
+main{max-width:860px;margin:auto;padding:14px}
+.card{
+  background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;
+  box-shadow:0 4px 16px rgba(16,24,40,.06)
+}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tabs button{background:#e9edf3;color:#18202b}
+.tabs button.active{background:#111827;color:#fff}
+button,input,select,textarea{font:inherit;border-radius:12px}
+button{border:0;padding:12px 14px;background:#111827;color:#fff;font-weight:700}
+button.secondary{background:#eef2f6;color:#18202b}
+button.green{background:#157347}
+button.warn{background:#fff3cd;color:#7a4b00}
+button.danger{background:#fff0f0;color:#b42318}
+input,select,textarea{width:100%;padding:12px;border:1px solid #d0d5dd;background:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.grow{flex:1;min-width:150px}
+.big{width:100%;padding:15px;font-size:17px}
+.hidden{display:none!important}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.day{
+  padding:10px 5px;background:#eef2f6;color:#18202b;border-radius:12px;text-align:center;
+  border:1px solid transparent
+}
+.day.active{background:#111827;color:#fff}
+.day .d{font-weight:800}.day .n{font-size:12px;opacity:.8;margin-top:3px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.stat{background:#f8fafc;border-radius:13px;padding:10px;text-align:center}
+.stat b{display:block;font-size:18px}
+.muted{color:#667085;font-size:14px}
+.tiny{color:#667085;font-size:12px}
+.name{font-weight:800}
+.badge{
+  font-size:11px;background:#fff3cd;color:#7a4b00;padding:3px 7px;border-radius:999px;
+  display:inline-block;margin-left:5px
+}
+.badge.blue{background:#e8f0ff;color:#174ea6}
+.badge.gray{background:#eef2f6;color:#475467}
+.item{
+  display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;
+  padding:12px 0;border-bottom:1px solid #eef0f3
+}
+.item:last-child{border-bottom:0}
+.num{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#111827;color:white;font-weight:800}
+.pick{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid #eef0f3}
+.pick input[type=checkbox]{width:auto;transform:scale(1.2);margin-top:5px}
+.empty{text-align:center;color:#667085;padding:18px}
+label.title{display:block;font-weight:700;margin:9px 0 5px}
+.photo{width:100%;max-height:280px;object-fit:contain;border-radius:12px;background:#f2f4f7;margin-top:10px}
+.progress{height:10px;background:#eef2f6;border-radius:99px;overflow:hidden;margin-top:8px}
+.progress div{height:100%;width:0;background:#111827}
+.routeCard{background:#f8fafc;border:1px solid #e4e7ec;border-radius:14px;padding:12px;margin:8px 0}
+.routeCard strong{display:block;margin-bottom:4px}
+.nav{display:inline-block;padding:9px 11px;background:#e8f0ff;color:#174ea6;border-radius:10px;text-decoration:none;font-weight:700}
+.codegrid{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+hr{border:0;border-top:1px solid #eef0f3;margin:14px 0}
+@media(max-width:600px){
+  .week{grid-template-columns:repeat(4,1fr)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .item{grid-template-columns:38px 1fr}
+  .item>div:last-child{grid-column:2}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Hana Trasy</h1>
+  <div class="sub">Týdenní plán domácích návštěv</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button id="tPlan" class="active" onclick="showTab('plan')">Týden</button>
+    <button id="tClients" onclick="showTab('clients')">Klienti</button>
+    <button id="tCodes" onclick="showTab('codes')">Kódy</button>
+  </div>
+
+  <section id="planTab">
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h2 style="margin:0">Týdenní plán</h2>
+          <div class="muted">Vyber den a připrav návštěvy.</div>
+        </div>
+        <input id="weekAnchor" type="date" style="max-width:170px" onchange="setWeekFromAnchor()">
+      </div>
+      <div id="week" class="week" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h2 id="dayTitle" style="margin:0">Plán dne</h2>
+          <div class="tiny">📷 Fotka plánu může obsahovat jen jména klientů.</div>
+        </div>
+        <button class="secondary" onclick="copyPreviousDay()">Kopírovat předchozí den</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><b id="sVisits">0</b><span>návštěv</span></div>
+        <div class="stat"><b id="sCare">0 min</b><span>u klientů</span></div>
+        <div class="stat"><b id="sPriority">0</b><span>ranní priorita</span></div>
+        <div class="stat"><b id="sKeys">0</b><span>klíčů</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">📷 Načíst den z fotografie</h2>
+      <div class="muted">Vyfoť nebo nahraj seznam jmen. Aplikace se pokusí jména spárovat se stálým seznamem klientů.</div><div class="tiny" style="margin-top:6px">🔒 Fotka se používá jen během rozpoznání jmen a neukládá se.</div>
+      <input id="photoInput" type="file" accept="image/*" capture="environment" style="margin-top:12px" onchange="readDayPhoto(event)">
+      <img id="photoPreview" class="photo hidden">
+      <div id="ocrBox" class="hidden">
+        <div class="progress"><div id="ocrBar"></div></div>
+        <div id="ocrStatus" class="tiny" style="margin-top:6px">Načítám…</div>
+        <label class="title">Rozpoznaný text</label>
+        <textarea id="ocrText" rows="6"></textarea>
+        <button class="big green" style="margin-top:10px" onclick="matchRecognizedNames()">Porovnat jména se seznamem</button>
+      </div>
+      <div id="matchResult" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Přidat klienty ručně</h2>
+      <div id="picker"></div>
+      <button class="big green" onclick="addSelected()">Přidat vybrané do dne</button>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h2 style="margin:0">Návštěvy dne</h2>
+          <div class="tiny">U každé návštěvy lze změnit kód, dobu a výjimečný požadovaný čas.</div>
+        </div>
+      </div>
+      <div id="dayList"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">🔑 Klíče</h2>
+      <div id="keySummary"></div>
+    </div>
+
+    <div class="card">
+      <button class="big" onclick="buildRoute()">VYTVOŘIT TRASU</button>
+      <div id="routeResult" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="clientsTab" class="hidden">
+    <div class="card">
+      <h2 style="margin-top:0">Nový klient</h2>
+      <div class="muted">Jméno a adresu můžeš napsat ručně nebo je načíst z fotografie. Ostatní údaje se doplní ručně.</div><div class="tiny" style="margin-top:6px">🔒 Fotka slouží jen k rozpoznání textu a po načtení se zahodí. Neukládá se do aplikace.</div>
+      <input id="clientPhotoInput" type="file" accept="image/*" capture="environment" style="margin-top:12px" onchange="readClientPhoto(event)">
+      <img id="clientPhotoPreview" class="photo hidden">
+      <div id="clientOcrBox" class="hidden">
+        <div class="progress"><div id="clientOcrBar"></div></div>
+        <div id="clientOcrStatus" class="tiny" style="margin-top:6px">Načítám…</div>
+        <label class="title">Rozpoznaný text</label>
+        <textarea id="clientOcrText" rows="4"></textarea>
+        <button class="secondary big" style="margin-top:8px" onclick="fillClientFromPhotoText()">Vyplnit jméno a adresu</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="grow"><input id="cName" placeholder="Jméno klienta"></div>
+        <div class="grow"><input id="cAddress" placeholder="Adresa"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="grow">
+          <label class="title">Výchozí kód návštěvy</label>
+          <select id="cCode"></select>
+        </div>
+        <div class="grow">
+          <label class="title">Ranní priorita</label>
+          <select id="cPriority">
+            <option value="0">Ne</option>
+            <option value="1">Ano</option>
+          </select>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:700">
+        <input id="cHasKey" type="checkbox" style="width:auto;transform:scale(1.2)" onchange="toggleClientKey()">
+        🔑 Klíč je potřeba
+      </label>
+      <div id="clientKeyBox" class="hidden" style="margin-top:10px">
+        <div class="row">
+          <div class="grow"><input id="cKeyNo" placeholder="Číslo klíče"></div>
+          <div class="grow">
+            <select id="cKeyHolder">
+              <option value="hana">Má Hana</option>
+              <option value="office">Je v kanceláři</option>
+              <option value="nurse">Má jiná sestra</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="big green" style="margin-top:12px" onclick="saveClient()">Uložit klienta</button>
+      <div class="tiny" style="margin-top:8px">Z fotografie se přebírá jen jméno a adresa. Kód/doba, ranní priorita a klíč se nastavují ručně.</div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Stálý seznam klientů</h2>
+      <div class="tiny" style="margin-bottom:8px">Ukládají se jen údaje potřebné pro plánování: jméno, adresa, kód/doba, ranní priorita a číslo klíče.</div>
+      <div id="clientList"></div>
+    </div>
+  </section>
+
+  <section id="codesTab" class="hidden">
+    <div class="card">
+      <h2 style="margin-top:0">Kódy návštěv</h2>
+      <div class="muted">Kód určuje plánovanou dobu u klienta. Neobsahuje popis zdravotního výkonu.</div>
+      <div class="codegrid" style="margin-top:12px">
+        <div><label class="title">Kód</label><input id="codeName" placeholder="Např. A"></div>
+        <div><label class="title">Doba</label><input id="codeMinutes" type="number" min="5" step="5" value="30"></div>
+        <button onclick="addCode()">Přidat</button>
+      </div>
+      <div id="codeList" style="margin-top:12px"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const STORE_CLIENTS='hana-v5-clients';
+const STORE_CODES='hana-v5-codes';
+const STORE_PLANS='hana-v5-plans';
+
+let clients=JSON.parse(localStorage.getItem(STORE_CLIENTS)||'[]');
+let codes=JSON.parse(localStorage.getItem(STORE_CODES)||'[]');
+let plans=JSON.parse(localStorage.getItem(STORE_PLANS)||'{}');
+
+if(!codes.length){
+  codes=[
+    {id:1,name:'A',minutes:10},
+    {id:2,name:'B',minutes:20},
+    {id:3,name:'C',minutes:30},
+    {id:4,name:'D',minutes:45},
+    {id:5,name:'E',minutes:60}
+  ];
+  saveCodes();
+}
+
+let selectedDate = new Date().toISOString().slice(0,10);
+document.getElementById('weekAnchor').value=selectedDate;
+
+function saveClients(){localStorage.setItem(STORE_CLIENTS,JSON.stringify(clients))}
+function saveCodes(){localStorage.setItem(STORE_CODES,JSON.stringify(codes))}
+function savePlans(){localStorage.setItem(STORE_PLANS,JSON.stringify(plans))}
+function plan(){if(!plans[selectedDate])plans[selectedDate]=[];return plans[selectedDate]}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function fmtDate(iso){
+  return new Date(iso+'T12:00:00').toLocaleDateString('cs-CZ',{weekday:'long',day:'numeric',month:'numeric'})
+}
+function codeByName(n){return codes.find(c=>c.name===n)}
+function minutesForCode(n){return codeByName(n)?.minutes||30}
+function holderText(h){return h==='hana'?'má Hana':h==='office'?'v kanceláři':'má jiná sestra'}
+
+function showTab(t){
+  ['plan','clients','codes'].forEach(x=>{
+    document.getElementById(x+'Tab').classList.toggle('hidden',x!==t);
+    document.getElementById('t'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('active',x===t);
+  });
+  if(t==='clients')renderClients();
+  if(t==='codes')renderCodes();
+  if(t==='plan')renderAll();
+}
+
+function mondayOf(dateStr){
+  const d=new Date(dateStr+'T12:00:00'); const day=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-day); return d;
+}
+function iso(d){return d.toISOString().slice(0,10)}
+function setWeekFromAnchor(){
+  selectedDate=document.getElementById('weekAnchor').value;
+  renderAll();
+}
+function renderWeek(){
+  const m=mondayOf(document.getElementById('weekAnchor').value||selectedDate);
+  const el=document.getElementById('week'); el.innerHTML='';
+  for(let i=0;i<7;i++){
+    const d=new Date(m); d.setDate(m.getDate()+i); const ds=iso(d);
+    const count=(plans[ds]||[]).length;
+    const b=document.createElement('button');
+    b.className='day'+(ds===selectedDate?' active':'');
+    b.innerHTML=`<div class="d">${['Po','Út','St','Čt','Pá','So','Ne'][i]}</div><div class="n">${d.getDate()}.${d.getMonth()+1}. · ${count}</div>`;
+    b.onclick=()=>{selectedDate=ds;renderAll()};
+    el.appendChild(b);
+  }
+}
+
+function renderCodeSelects(){
+  const opts=codes.map(c=>`<option value="${esc(c.name)}">${esc(c.name)} · ${c.minutes} min</option>`).join('');
+  document.getElementById('cCode').innerHTML=opts;
+}
+function renderCodes(){
+  const el=document.getElementById('codeList');
+  el.innerHTML=codes.map(c=>`
+    <div class="item">
+      <div class="num">${esc(c.name)}</div>
+      <div><div class="name">Kód ${esc(c.name)}</div><div class="muted">${c.minutes} minut</div></div>
+      <button class="danger" onclick="deleteCode(${c.id})">Smazat</button>
+    </div>`).join('');
+  renderCodeSelects();
+}
+function addCode(){
+  const name=document.getElementById('codeName').value.trim();
+  const minutes=+document.getElementById('codeMinutes').value||30;
+  if(!name)return alert('Doplň kód.');
+  if(codes.some(c=>c.name.toLowerCase()===name.toLowerCase()))return alert('Tento kód už existuje.');
+  codes.push({id:Date.now(),name,minutes});saveCodes();renderCodes();
+  document.getElementById('codeName').value='';
+}
+function deleteCode(id){
+  if(codes.length<=1)return alert('Alespoň jeden kód musí zůstat.');
+  codes=codes.filter(c=>c.id!==id);saveCodes();renderCodes();
+}
+
+
+async function readClientPhoto(event){
+  const file=event.target.files[0]; if(!file)return;
+  const img=document.getElementById('clientPhotoPreview');
+  img.src=URL.createObjectURL(file); img.classList.remove('hidden');
+  document.getElementById('clientOcrBox').classList.remove('hidden');
+  const bar=document.getElementById('clientOcrBar');
+  const st=document.getElementById('clientOcrStatus');
+  st.textContent='Rozpoznávám jméno a adresu…';
+  try{
+    const r=await Tesseract.recognize(file,'ces+eng',{logger:m=>{
+      if(m.status==='recognizing text'){
+        const pct=Math.round((m.progress||0)*100);
+        bar.style.width=pct+'%';
+        st.textContent='Rozpoznávám… '+pct+' %';
+      }
+    }});
+    document.getElementById('clientOcrText').value=r.data.text.trim();
+    bar.style.width='100%';
+    st.textContent='Hotovo. Fotka byla zahozena; zůstal jen rozpoznaný text.';
+    fillClientFromPhotoText();
+    try{ URL.revokeObjectURL(img.src); }catch(_){}
+    img.removeAttribute('src'); img.classList.add('hidden');
+    event.target.value='';
+  }catch(e){
+    st.textContent='Text se nepodařilo automaticky přečíst. Jméno a adresu lze doplnit ručně.';
+  }
+}
+
+function fillClientFromPhotoText(){
+  const text=document.getElementById('clientOcrText').value.trim();
+  const lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)return;
+
+  // First useful line = name; remaining lines are treated as address candidates.
+  let name=lines[0];
+  let address='';
+
+  // Prefer lines that look like Czech addresses.
+  const addrLines=lines.slice(1).filter(x=>
+    /\d/.test(x) ||
+    /\b(ulice|ul\.|náměstí|nám\.|tř\.|čp|č\.p\.|číslo|psc|psč)\b/i.test(x)
+  );
+  if(addrLines.length) address=addrLines.join(', ');
+  else if(lines.length>1) address=lines.slice(1).join(', ');
+
+  if(!document.getElementById('cName').value) document.getElementById('cName').value=name.slice(0,100);
+  if(!document.getElementById('cAddress').value) document.getElementById('cAddress').value=address.slice(0,180);
+}
+
+function toggleClientKey(){
+  document.getElementById('clientKeyBox').classList.toggle('hidden',!document.getElementById('cHasKey').checked);
+}
+function saveClient(){
+  const name=document.getElementById('cName').value.trim();
+  const address=document.getElementById('cAddress').value.trim();
+  if(!name||!address)return alert('Doplň jméno a adresu.');
+  const hasKey=document.getElementById('cHasKey').checked;
+  clients.push({
+    id:Date.now(),name,address,
+    defaultCode:document.getElementById('cCode').value,
+    priority:document.getElementById('cPriority').value==='1',
+    hasKey,
+    keyNo:hasKey?document.getElementById('cKeyNo').value.trim():'',
+    keyHolder:hasKey?document.getElementById('cKeyHolder').value:''
+  });
+  saveClients();renderClients();renderAll();
+  document.getElementById('cName').value='';
+  document.getElementById('cAddress').value='';
+  document.getElementById('cHasKey').checked=false;toggleClientKey();
+}
+function deleteClient(id){
+  if(!confirm('Odstranit klienta ze stálého seznamu?'))return;
+  clients=clients.filter(c=>c.id!==id);saveClients();renderClients();renderAll();
+}
+function renderClients(){
+  renderCodeSelects();
+  const el=document.getElementById('clientList');
+  if(!clients.length){el.innerHTML='<div class="empty">Zatím nejsou uložení klienti.</div>';return}
+  el.innerHTML=clients.map((c,i)=>`
+    <div class="item">
+      <div class="num">${i+1}</div>
+      <div>
+        <div class="name">${esc(c.name)}
+          ${c.priority?'<span class="badge">⚡ RÁNO</span>':''}
+          ${c.hasKey?`<span class="badge blue">🔑 ${esc(c.keyNo||'?')}</span>`:''}
+        </div>
+        <div class="muted">${esc(c.address)} · kód ${esc(c.defaultCode)} · ${minutesForCode(c.defaultCode)} min</div>
+        ${c.hasKey?`<div class="tiny">Klíč ${holderText(c.keyHolder)}</div>`:''}
+      </div>
+      <button class="danger" onclick="deleteClient(${c.id})">×</button>
+    </div>`).join('');
+}
+
+function renderPicker(){
+  const used=new Set(plan().map(v=>v.clientId));
+  const el=document.getElementById('picker');
+  if(!clients.length){el.innerHTML='<div class="empty">Nejdřív přidej klienty do seznamu.</div>';return}
+  el.innerHTML=clients.map(c=>`
+    <label class="pick">
+      <input class="pickBox" type="checkbox" value="${c.id}" ${used.has(c.id)?'disabled':''}>
+      <div>
+        <div class="name">${esc(c.name)} ${c.priority?'<span class="badge">⚡</span>':''} ${c.hasKey?`<span class="badge blue">🔑 ${esc(c.keyNo||'?')}</span>`:''}</div>
+        <div class="muted">${esc(c.address)} · ${esc(c.defaultCode)} · ${minutesForCode(c.defaultCode)} min</div>
+        ${used.has(c.id)?'<div class="tiny">Už je v plánu</div>':''}
+      </div>
+    </label>`).join('');
+}
+function visitFromClient(c){
+  return {
+    id:Date.now()+Math.random(),clientId:c.id,name:c.name,address:c.address,
+    code:c.defaultCode,minutes:minutesForCode(c.defaultCode),
+    priority:!!c.priority,hasKey:!!c.hasKey,keyNo:c.keyNo||'',keyHolder:c.keyHolder||'',
+    requestedTime:''
+  }
+}
+function addSelected(){
+  const ids=[...document.querySelectorAll('.pickBox:checked')].map(x=>+x.value);
+  ids.forEach(id=>{
+    const c=clients.find(c=>c.id===id);
+    if(c&&!plan().some(v=>v.clientId===id))plan().push(visitFromClient(c))
+  });
+  savePlans();renderAll();
+}
+function removeVisit(id){plans[selectedDate]=plan().filter(v=>v.id!==id);savePlans();renderAll()}
+function updateVisit(id,field,value){
+  const v=plan().find(v=>v.id===id);if(!v)return;
+  v[field]=value;
+  if(field==='code')v.minutes=minutesForCode(value);
+  savePlans();renderAll();
+}
+function renderDay(){
+  document.getElementById('dayTitle').textContent='Plán · '+fmtDate(selectedDate);
+  const p=plan();
+  document.getElementById('sVisits').textContent=p.length;
+  document.getElementById('sCare').textContent=p.reduce((a,v)=>a+(+v.minutes||0),0)+' min';
+  document.getElementById('sPriority').textContent=p.filter(v=>v.priority).length;
+  document.getElementById('sKeys').textContent=p.filter(v=>v.hasKey).length;
+
+  const el=document.getElementById('dayList');
+  if(!p.length){el.innerHTML='<div class="empty">Pro tento den zatím nejsou klienti.</div>';return}
+  el.innerHTML=p.map((v,i)=>`
+    <div class="item">
+      <div class="num">${i+1}</div>
+      <div>
+        <div class="name">${esc(v.name)}
+          ${v.priority?'<span class="badge">⚡ RANNÍ PRIORITA</span>':''}
+          ${v.hasKey?`<span class="badge blue">🔑 ${esc(v.keyNo||'?')}</span>`:''}
+        </div>
+        <div class="muted">${esc(v.address)}</div>
+        <div class="row" style="margin-top:8px">
+          <div class="grow">
+            <select onchange="updateVisit(${v.id},'code',this.value)">
+              ${codes.map(c=>`<option value="${esc(c.name)}" ${c.name===v.code?'selected':''}>Kód ${esc(c.name)} · ${c.minutes} min</option>`).join('')}
+            </select>
+          </div>
+          <div class="grow">
+            <input type="time" value="${esc(v.requestedTime||'')}" onchange="updateVisit(${v.id},'requestedTime',this.value)" title="Výjimečný požadovaný čas">
+          </div>
+        </div>
+        <div class="tiny" style="margin-top:5px">Doba návštěvy: ${v.minutes} min${v.requestedTime?' · požadovaný čas '+esc(v.requestedTime):''}</div>
+      </div>
+      <button class="danger" onclick="removeVisit(${v.id})">×</button>
+    </div>`).join('');
+}
+
+function renderKeys(){
+  const p=plan();
+  const need=p.filter(v=>v.hasKey);
+  const el=document.getElementById('keySummary');
+  if(!need.length){el.innerHTML='<div class="empty">Pro tento den nejsou potřeba žádné klíče.</div>';return}
+
+  const have=need.filter(v=>v.keyHolder==='hana');
+  const office=need.filter(v=>v.keyHolder==='office');
+  const nurse=need.filter(v=>v.keyHolder==='nurse');
+
+  const plannedIds=new Set(p.map(v=>v.clientId));
+  const returnable=clients.filter(c=>c.hasKey&&c.keyHolder==='hana'&&!plannedIds.has(c.id));
+
+  el.innerHTML=`
+    ${have.length?`<div class="routeCard"><strong>✅ Hana už má</strong>${have.map(v=>'Klíč '+esc(v.keyNo||'?')+' · '+esc(v.name)).join('<br>')}</div>`:''}
+    ${office.length?`<div class="routeCard"><strong>🏢 Vyzvednout v kanceláři</strong>${office.map(v=>'Klíč '+esc(v.keyNo||'?')+' · '+esc(v.name)).join('<br>')}</div>`:''}
+    ${nurse.length?`<div class="routeCard"><strong>👩‍⚕️ Převzít od jiné sestry</strong>${nurse.map(v=>'Klíč '+esc(v.keyNo||'?')+' · '+esc(v.name)).join('<br>')}</div>`:''}
+    ${returnable.length?`<div class="routeCard"><strong>↩️ Možné vrátit při stejném předání</strong>${returnable.map(c=>'Klíč '+esc(c.keyNo||'?')+' · '+esc(c.name)).join('<br>')}<div class="tiny" style="margin-top:5px">Aplikace se pokusí spojit vrácení a vyzvednutí do jedné návštěvy.</div></div>`:''}
+  `;
+}
+
+function copyPreviousDay(){
+  const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()-1);const prev=iso(d);
+  if(!(plans[prev]||[]).length)return alert('Předchozí den nemá žádný plán.');
+  if(plan().length&&!confirm('Tento den už obsahuje návštěvy. Nahradit je kopií předchozího dne?'))return;
+  plans[selectedDate]=(plans[prev]||[]).map(v=>({...v,id:Date.now()+Math.random()}));
+  savePlans();renderAll();
+}
+
+function normalize(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function similarity(a,b){
+  a=normalize(a);b=normalize(b);
+  if(!a||!b)return 0;
+  if(a===b)return 1;
+  if(a.includes(b)||b.includes(a))return .9;
+  const aa=new Set(a.split(' ')),bb=new Set(b.split(' '));
+  const inter=[...aa].filter(x=>bb.has(x)).length;
+  return inter/Math.max(aa.size,bb.size);
+}
+async function readDayPhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const img=document.getElementById('photoPreview');img.src=URL.createObjectURL(file);img.classList.remove('hidden');
+  document.getElementById('ocrBox').classList.remove('hidden');
+  const bar=document.getElementById('ocrBar'),st=document.getElementById('ocrStatus');
+  try{
+    const r=await Tesseract.recognize(file,'ces+eng',{logger:m=>{
+      if(m.status==='recognizing text'){
+        const pct=Math.round((m.progress||0)*100);bar.style.width=pct+'%';st.textContent='Rozpoznávám jména… '+pct+' %';
+      }
+    }});
+    document.getElementById('ocrText').value=r.data.text.trim();
+    bar.style.width='100%';st.textContent='Hotovo. Fotka byla zahozena; zůstal jen rozpoznaný text.';
+    try{ URL.revokeObjectURL(img.src); }catch(_){}
+    img.removeAttribute('src'); img.classList.add('hidden');
+    event.target.value='';
+  }catch(e){
+    st.textContent='Automatické rozpoznání se nepodařilo. Jména můžeš vložit ručně do pole.';
+  }
+}
+function matchRecognizedNames(){
+  const lines=document.getElementById('ocrText').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const matched=[],unknown=[];
+  lines.forEach(line=>{
+    let best=null,bestScore=0;
+    clients.forEach(c=>{const s=similarity(line,c.name);if(s>bestScore){bestScore=s;best=c}});
+    if(best&&bestScore>=.65)matched.push({raw:line,client:best,score:bestScore});
+    else unknown.push(line);
+  });
+
+  const existing=new Set(plan().map(v=>v.clientId));
+  matched.forEach(m=>{if(!existing.has(m.client.id)){plan().push(visitFromClient(m.client));existing.add(m.client.id)}});
+  savePlans();
+
+  document.getElementById('matchResult').innerHTML=`
+    <div class="routeCard"><strong>Rozpoznání dne</strong>
+      ${matched.length} nalezeno ve stálém seznamu · ${unknown.length} neznámých
+    </div>
+    ${unknown.length?`<div class="routeCard"><strong>Nová / nerozpoznaná jména</strong>${unknown.map(x=>esc(x)).join('<br>')}<div class="tiny" style="margin-top:6px">Tyto klienty doplň jednou do stálého seznamu.</div></div>`:''}
+  `;
+  renderAll();
+}
+
+function buildRoute(){
+  const p=[...plan()];
+  if(!p.length)return alert('Nejdřív přidej klienty do dne.');
+
+  p.sort((a,b)=>{
+    if(a.priority!==b.priority)return a.priority?-1:1;
+    if(a.requestedTime&&b.requestedTime)return a.requestedTime.localeCompare(b.requestedTime);
+    if(a.requestedTime)return -1;
+    if(b.requestedTime)return 1;
+    return a.name.localeCompare(b.name,'cs');
+  });
+
+  const officePickup=p.filter(v=>v.hasKey&&v.keyHolder==='office');
+  const nursePickup=p.filter(v=>v.hasKey&&v.keyHolder==='nurse');
+  const plannedIds=new Set(p.map(v=>v.clientId));
+  const returns=clients.filter(c=>c.hasKey&&c.keyHolder==='hana'&&!plannedIds.has(c.id));
+
+  let keyStop='';
+  if(officePickup.length||returns.length){
+    const parts=[];
+    if(officePickup.length)parts.push('vyzvednout '+officePickup.map(v=>'klíč '+esc(v.keyNo||'?')).join(', '));
+    if(returns.length)parts.push('vrátit '+returns.map(c=>'klíč '+esc(c.keyNo||'?')).join(', '));
+    keyStop=`<div class="routeCard"><strong>🔑 Společné předání klíčů</strong>Kancelář: ${parts.join(' · ')}</div>`;
+  }
+  if(nursePickup.length){
+    keyStop+=`<div class="routeCard"><strong>🔑 Převzetí od sestry</strong>${nursePickup.map(v=>'Klíč '+esc(v.keyNo||'?')+' pro '+esc(v.name)).join('<br>')}</div>`;
+  }
+
+  let elapsed=0;
+  const rows=p.map((v,i)=>{
+    elapsed+=+v.minutes||0;
+    return `<div class="routeCard">
+      <strong>${i+1}. ${esc(v.name)} ${v.priority?'⚡':''}</strong>
+      ${esc(v.address)}<br>
+      Kód ${esc(v.code)} · ${v.minutes} min${v.requestedTime?' · požadavek '+esc(v.requestedTime):''}
+      ${v.hasKey?`<br>🔑 klíč ${esc(v.keyNo||'?')} · ${holderText(v.keyHolder)}`:''}
+      <div style="margin-top:7px"><a class="nav" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.address)}">Navigovat</a></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('routeResult').innerHTML=`
+    <div class="routeCard"><strong>Hotový pracovní plán</strong>${p.length} návštěv · ${elapsed} min u klientů<br><span class="tiny">Pořadí zatím respektuje ranní prioritu a požadované časy. Skutečné silniční vzdálenosti vyžadují napojení na mapové API.</span></div>
+    ${keyStop}${rows}
+  `;
+}
+
+function renderAll(){
+  renderWeek();renderPicker();renderDay();renderKeys();renderCodeSelects();
+}
+renderCodes();renderClients();renderAll();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
